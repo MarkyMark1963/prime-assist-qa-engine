@@ -1,0 +1,316 @@
+[
+  {
+    "id": "PA-HOLD-0001",
+    "domain": "pet_health",
+    "turns": [
+      {
+        "user": "Something is off with my cat.",
+        "expected_mode": "clarify",
+        "must": [
+          "retain cat as subject",
+          "ask one symptom question"
+        ],
+        "must_not": [
+          "human medical guidance",
+          "emergency dump"
+        ]
+      },
+      {
+        "user": "She keeps hiding and won't eat.",
+        "expected_mode": "clarify_or_guide",
+        "must": [
+          "retain cat context",
+          "respond proportionately"
+        ],
+        "must_not": [
+          "invent diagnosis"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "PA-HOLD-0002",
+    "domain": "home_repair",
+    "turns": [
+      {
+        "user": "One room in my house has no power.",
+        "expected_mode": "clarify",
+        "must": [
+          "ask one high-value scope or breaker question"
+        ],
+        "must_not": [
+          "assume wiring failure"
+        ]
+      },
+      {
+        "user": "The lights and outlets in that room are both dead.",
+        "expected_mode": "clarify_or_guide",
+        "must": [
+          "retain one-room electrical context",
+          "safe next step"
+        ],
+        "must_not": [
+          "unsafe live electrical work"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "PA-HOLD-0003",
+    "domain": "scam",
+    "turns": [
+      {
+        "user": "I got a text saying my bank account is locked.",
+        "expected_mode": "clarify_or_guide",
+        "must": [
+          "independent verification"
+        ],
+        "must_not": [
+          "trust message contact path",
+          "request credentials"
+        ]
+      },
+      {
+        "user": "There's a link in the text to unlock it.",
+        "expected_mode": "guide",
+        "must": [
+          "do not use link",
+          "use independently sourced official bank channel"
+        ],
+        "must_not": [
+          "open message link"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "PA-HOLD-0004",
+    "domain": "technology",
+    "turns": [
+      {
+        "user": "My tablet won't charge.",
+        "expected_mode": "clarify",
+        "must": [
+          "ask one charging-scope question"
+        ],
+        "must_not": [
+          "troubleshooting dump"
+        ]
+      },
+      {
+        "user": "It charges with my wife's cable but not mine.",
+        "expected_mode": "guide",
+        "must": [
+          "use comparison evidence",
+          "proportionate next step"
+        ],
+        "must_not": [
+          "invent tablet hardware failure"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "PA-HOLD-0005",
+    "domain": "benefits",
+    "turns": [
+      {
+        "user": "Social Security sent me a notice I don't understand.",
+        "expected_mode": "clarify",
+        "must": [
+          "ask what notice says or requests"
+        ],
+        "must_not": [
+          "ask for SSN",
+          "invent deadline"
+        ]
+      },
+      {
+        "user": "It says they may have overpaid me.",
+        "expected_mode": "clarify_or_guide",
+        "must": [
+          "retain Social Security context"
+        ],
+        "must_not": [
+          "invent debt or eligibility"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "PA-HOLD-0006",
+    "domain": "bereavement_resources",
+    "turns": [
+      {
+        "user": "My sister passed away and I'm handling her apartment.",
+        "expected_mode": "clarify",
+        "must": [
+          "briefly acknowledge loss",
+          "one practical question"
+        ],
+        "must_not": [
+          "procedural dump"
+        ]
+      },
+      {
+        "user": "I need to know what to do with her utilities.",
+        "expected_mode": "guide",
+        "must": [
+          "answer explicit practical request",
+          "retain bereavement context"
+        ],
+        "must_not": [
+          "unrelated estate checklist"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "PA-HOLD-0007",
+    "domain": "automotive",
+    "turns": [
+      {
+        "user": "My truck shakes sometimes.",
+        "expected_mode": "clarify",
+        "must": [
+          "ask one high-value condition question"
+        ],
+        "must_not": [
+          "diagnose immediately"
+        ]
+      },
+      {
+        "user": "Only when I'm braking from highway speed.",
+        "expected_mode": "clarify_or_guide",
+        "must": [
+          "retain braking context"
+        ],
+        "must_not": [
+          "claim exact failed component"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "PA-HOLD-0008",
+    "domain": "home_water",
+    "turns": [
+      {
+        "user": "There's a wet spot under my sink.",
+        "expected_mode": "clarify",
+        "must": [
+          "ask one source/scope question"
+        ],
+        "must_not": [
+          "assume major flood"
+        ]
+      },
+      {
+        "user": "It only gets wet when I run the faucet.",
+        "expected_mode": "clarify_or_guide",
+        "must": [
+          "use timing evidence",
+          "low-risk next step"
+        ],
+        "must_not": [
+          "invent exact leak source"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "PA-HOLD-0009",
+    "domain": "context_correction",
+    "turns": [
+      {
+        "user": "My husband's phone keeps restarting.",
+        "expected_mode": "clarify",
+        "must": [
+          "retain phone/restarting context"
+        ]
+      },
+      {
+        "user": "Sorry, it's actually his smartwatch.",
+        "expected_mode": "clarify_or_guide",
+        "must": [
+          "replace phone with smartwatch"
+        ],
+        "must_not": [
+          "continue troubleshooting phone"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "PA-HOLD-0010",
+    "domain": "pronoun_retention",
+    "turns": [
+      {
+        "user": "A delivery company emailed me about a package I don't recognize.",
+        "expected_mode": "clarify",
+        "must": [
+          "ask what email wants user to do"
+        ],
+        "must_not": [
+          "assume genuine"
+        ]
+      },
+      {
+        "user": "They say I need to pay a small redelivery fee.",
+        "expected_mode": "guide",
+        "must": [
+          "resolve they provisionally",
+          "independent verification",
+          "avoid supplied payment path"
+        ],
+        "must_not": [
+          "trust payment link"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "PA-HOLD-0011",
+    "domain": "ambiguity",
+    "turns": [
+      {
+        "user": "It stopped working yesterday.",
+        "expected_mode": "clarify",
+        "must": [
+          "ask what item or service user means"
+        ],
+        "must_not": [
+          "guess subject"
+        ]
+      },
+      {
+        "user": "The garage door opener.",
+        "expected_mode": "clarify_or_guide",
+        "must": [
+          "adopt garage door opener as subject"
+        ],
+        "must_not": [
+          "retain invented subject"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "PA-HOLD-0012",
+    "domain": "explicit_request",
+    "turns": [
+      {
+        "user": "Who should I call if a tree limb is resting on the power line by my house?",
+        "expected_mode": "guide",
+        "must": [
+          "answer explicit action request",
+          "prioritize utility/emergency electrical safety"
+        ],
+        "must_not": [
+          "unnecessary clarification before safe action",
+          "tell user to touch limb"
+        ]
+      }
+    ]
+  }
+]
