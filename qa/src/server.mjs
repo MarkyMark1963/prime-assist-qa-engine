@@ -46,7 +46,9 @@ http.createServer(async(req,res)=>{
    await locked(id,async(conn,c,jobs)=>{if(stages.some(stage=>!jobs.some(j=>j.stage===stage&&j.status==='complete'&&j.payload.summary?.passed)))throw Error('All three gates must pass');await conn.query('INSERT INTO paqa_approvals(candidate_id,note) VALUES($1,$2) ON CONFLICT(candidate_id) DO NOTHING',[id,b.note.trim().slice(0,2000)])});return reply(res,200,{approved:true,deployed:false});
   }
   if(action==='evidence'&&req.method==='GET'){
-   const j=(await db.query("SELECT payload FROM paqa_jobs WHERE candidate_id=$1 AND stage='development'",[id])).rows[0];return reply(res,200,{development:j?.payload||null});
+   const stage=new URL(req.url,'http://localhost').searchParams.get('stage')||'development';
+   if(!['development','validation'].includes(stage))return reply(res,400,{error:'Only development or validation evidence can be viewed'});
+   const j=(await db.query('SELECT payload FROM paqa_jobs WHERE candidate_id=$1 AND stage=$2',[id,stage])).rows[0];return reply(res,200,{[stage]:j?.payload||null});
   }
   if(action==='repair'&&req.method==='POST'){
    const rows=(await db.query("SELECT c.patch,j.status,j.payload FROM paqa_candidates c JOIN paqa_jobs j ON j.candidate_id=c.id WHERE c.id=$1 AND j.stage='development'",[id])).rows;
