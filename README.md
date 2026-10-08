@@ -1,100 +1,59 @@
-# Prime Assist QA rebuild — reviewable source package
+# Prime Assist
 
-This package creates a separate QA service. It does not change or deploy the existing services. It includes two small Navigator wrappers and their shared core so QA can verify the exact Navigator behavior version used for every response.
+Prime Assist contains the Netlify customer Navigator and the Render QA engine. The QA engine compares frozen candidate patches against the deployed Navigator, keeps evidence in Postgres, and enforces development → validation → final regression gates.
 
-## Where every file goes
+## Applications
 
-Create a new private GitHub repository named `prime-assist-qa-engine`. Upload the CONTENTS of `qa/`, preserving these paths at the repository top level:
+| Folder | Application | Hosting configuration |
+| --- | --- | --- |
+| `qa/` | Administrator QA dashboard, API, and worker | Render root `qa`, build `npm install`, start `npm start`, Node 22+ |
+| `navigator/` | Customer interface and Navigator functions | Netlify base `navigator`, publish `public`, functions `netlify/functions` |
 
-- `package.json`
-- `src/server.mjs`
-- `src/store.mjs`
-- `src/runner.mjs`
-- `src/domain.mjs`
-- `public/index.html`
-- `data/development.json`
-- `data/validation.json`
-- `data/legacy-holdout.json`
-- `data/legacy-single.json`
-- `test/pipeline.test.mjs`
+The customer interface presents one current answer, keeps earlier exchanges expandable, preserves follow-up context, and offers retry without duplicating successful history. Start over aborts pending work. Responses are escaped before rendering. Conversation state lives in the current page and is lost on refresh. No verified resource lookup is implemented.
 
-Do not upload the outer package folder or ZIP as the application. Do not overwrite the existing V4 repository.
-
-Commit message: `Build durable QA engine`
-
-Commit description: `Persist jobs and enforce gates`
-
-Render: this new repository does not affect the old service. Later create a NEW Render service. Root Directory blank; Build Command `npm install`; Start Command `npm start`; Node 22 or later. No persistent disk is required: the new engine uses Postgres for its state.
-
-In the existing Netlify deployment folder, these four files go directly into `netlify/functions/`:
-
-- `navigate.js` — replace the existing file
-- `navigate-preview.js` — replace the existing file
-- `navigator-core.js` — add
-- `policy.json` — add
-
-`navigator/test/navigator.test.mjs` is a local verification file; it does not go into Netlify functions. This README and TEST-RESULTS.md are instructions, not runtime files.
-
-Keep the existing `app.js`, `index.html`, `styles.css`, and `netlify.toml`. The response fields remain compatible with the inspected frontend. The core preserves the existing behavioral policy, but moves it into the model instruction field and retains up to 100 validated history entries instead of silently truncating to twelve. This is a real behavior change and must be tested before launch. The wrappers need Node 22-compatible execution. No web lookup has been added.
+The Netlify configuration publishes only `navigator/public/`. Backend source and test files remain outside the published directory. Existing manually deployed Netlify sites must explicitly deploy this application or connect to this repository; a GitHub commit alone does not update such a site.
 
 ## Configuration
 
-New Render service:
+Render needs `DATABASE_URL`, `OPENAI_API_KEY`, `QA_ADMIN_KEY`, `QA_PREVIEW_KEY`, and `QA_TARGET_ORIGIN`. The current target is `https://melodious-empanada-9409f1.netlify.app`. Database tables use the `paqa_` prefix.
 
-- `DATABASE_URL`: the Neon/Postgres connection string. Tables use the new `paqa_` prefix; old `qa_jobs` and `paos_` tables are not changed.
-- `OPENAI_API_KEY`: existing API key.
-- `QA_ADMIN_KEY`: a new random secret of at least 32 characters. Used to access the QA dashboard; not stored in the browser.
-- `QA_PREVIEW_KEY`: a DIFFERENT random secret of at least 32 characters.
-- `QA_TARGET_ORIGIN`: `https://melodious-empanada-9409f1.netlify.app` (or the actual test deployment origin).
+Netlify needs `OPENAI_API_KEY` and the same `QA_PREVIEW_KEY` as Render. Use distinct administrator and preview keys. Never commit credentials. The dashboard uses the administrator key only in its current page.
 
-Netlify:
+## QA behavior
 
-- Keep `OPENAI_API_KEY`.
-- Add `QA_PREVIEW_KEY` with exactly the same value as the new QA service.
+- Candidates freeze their patch, Navigator fingerprint, and test suites. A version mismatch stops testing.
+- Each gate requires complete, passing candidate evidence. Technical failures, regressions, and critical failures block progression. A failing baseline does not excuse a failing candidate.
+- Each stage has a durable 240-request budget, including failed requests and retries. Temporary HTTP 502/503/504 failures get at most two retries. HTTP 429 and other errors stop the stage.
+- Baseline and candidate histories remain separate. Completed conversations, completed turns, and partial response/grading checkpoints survive interrupted runs. Retrying a technical failure keeps successful work. An uncheckpointed request may still be repeated and charged after a crash.
+- Worker leases expire after two minutes and renew every fifteen seconds. Three repeated worker crashes stop a job.
+- Automatic repair uses only completed development failure evidence and creates a new candidate.
+- Administrators can inspect development and validation evidence. Final-gate evidence becomes available only after that run completes. Reviewed final cases must be treated as regression cases on future revisions.
+- Approval requires all three passing gates and a written review note. Approval records review; it does not deploy a patch.
 
-Do not paste keys into chat, GitHub, or screenshots. The old QA service will not authenticate against the replacement preview function, so use the new QA service after installing the adapter. Keep the old services as references; do not run both against the replacement preview endpoint.
+The historical final suite has already been exposed and is a regression gate, not proof of unseen generalization. Fresh independently authored scenarios and human review are needed before release-readiness claims. Model grading is supplemented by structural checks, but the answer generator and evaluator use the same model.
 
-## What is enforced
+## Tests
 
-1. Save a candidate: the patch, Navigator fingerprint, and all test suites become immutable snapshots in Postgres.
-2. Run development, then validation, then the legacy holdout. The server enforces the order; there is no import route that manufactures eligibility or passed validation.
-3. Every candidate conversation must pass. Technical failures, missing tests, regressions, and critical failures block a gate. Matching a failing baseline cannot pass.
-4. Each model or Navigator request uses a durable call counter; each stage is capped at 240 requests, including failed requests and retries. Model repair is one separately initiated model request per click.
-5. Baseline and candidate maintain separate conversations. Candidate requests use the deployed preview endpoint with its matching patch fingerprint.
-6. The queue, worker lease, partial response checkpoints, evaluations, and summaries live in Postgres. After a process restart, an expired lease can be reclaimed after two minutes. An in-flight request that had not been checkpointed can be repeated and charged again; this is at-least-once execution, not exactly-once billing.
-7. Technical failures stop the stage and can be retried explicitly with the same frozen candidate. Successful conversations are retained. Repeated worker crashes stop after three automatic attempts.
-8. Automated repair sees only development failures. It creates a new candidate rather than changing the tested patch.
-9. Holdout details are absent from the dashboard and repair routes. Only summaries appear. Database administrators still have access; this is workflow isolation, not encryption from the operator.
-10. Human approval requires three passed gates and a written review note. It records approval only; it does not deploy.
+From the repository root:
 
-## Limits and required live acceptance checks
+```sh
+node --test qa/test/*.test.mjs navigator/test/*.test.mjs navigator/test/*.test.cjs
+```
 
-- The old holdout is historical and already exposed. It is preserved as a regression gate, not evidence of unseen generalization. Add independently authored, genuinely fresh tests before using the system to claim public-release readiness. No test result guarantees absence of unknown failures.
-- The answer generator and evaluator still use the same model. Deterministic structure checks supplement model grading; independent human review remains necessary. This rebuild does not solve factual verification or add resource lookup.
-- The preserved single-turn suite is archived, not an active gate, because some requirements conflict with the newer one-variable clarification policy. The active suites contain 10 development conversations/20 turns, 6 validation conversations/11 turns, and 12 legacy holdout conversations/23 turns.
-- No PAOS dashboard repair is included in this package. That is a separate change after the QA foundation is proven.
-- Live Neon schema creation, lease recovery, Netlify execution, dependencies, and actual model responses have not been verified in the local environment. Use the tests below before relying on production behavior.
+From `qa/`, `npm test` runs the pipeline tests. Customer tests use a mocked document and network; they verify conversation state, duplicate submission protection, recovery, safe rendering, and cancellation. They do not replace visual/mobile browser checks or live Netlify acceptance tests.
 
-After deployment: confirm the Navigator GET `/api/navigate` reports protocol 1 and a fingerprint; confirm unauthorized preview calls return 401; create one candidate and run development; restart the QA process mid-run and verify recovery from its checkpoints; confirm a failing development gate prevents validation; confirm a technical failure is not behavioral evidence; attempt approval before all gates pass and verify rejection. Do not start high-volume runs before this acceptance check.
+## QA API
 
-Run all local tests from the extracted outer package folder:
+All `/api/` routes require `x-qa-key: QA_ADMIN_KEY`.
 
-`node --test qa/test/*.test.mjs navigator/test/*.test.mjs`
+| Method | Route | Purpose |
+| --- | --- | --- |
+| GET | `/api/candidates` | Candidate summaries |
+| POST | `/api/candidates` | Freeze a patch |
+| POST | `/api/candidates/:id/run` | Run the next eligible gate |
+| POST | `/api/candidates/:id/retry` | Resume a technical failure |
+| POST | `/api/candidates/:id/repair` | Propose a new patch from development failures |
+| GET | `/api/candidates/:id/evidence?stage=development` | Inspect development evidence; stage also accepts `validation` or completed `holdout` |
+| POST | `/api/candidates/:id/approve` | Record human review with a note |
 
-Run QA-only tests from the new repository:
-
-`npm test`
-
-## API
-
-All `/api/` routes require `x-qa-key: QA_ADMIN_KEY`. The dashboard asks for this key in a password field and keeps it only in the current page.
-
-- `GET /api/candidates`: status summaries
-- `POST /api/candidates` with `{ "patch": "..." }`: save frozen candidate
-- `POST /api/candidates/:id/run`: run next allowed gate
-- `POST /api/candidates/:id/retry`: retry only a technical failure
-- `POST /api/candidates/:id/repair`: propose a new patch from development failures
-- `GET /api/candidates/:id/evidence`: development evidence only
-- `POST /api/candidates/:id/approve` with `{ "note": "..." }`: record human review after all gates pass
-
-No automatic promotion, old job migration, background departments, or database deletion is performed.
+Navigator GET `/api/navigate` returns its fingerprint without a model call. Customer POST `/api/navigate` accepts `question`, optional `location`, and validated conversation `history`. Candidate testing uses POST `/api/navigate-preview`, with preview authorization and a matching expected version.

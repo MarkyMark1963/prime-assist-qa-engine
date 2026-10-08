@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#125e64"><meta name="description" content="Tell Prime Assist what is happening and get help choosing your next step.">
+<title>Prime Assist — Find your next step</title><link rel="stylesheet" href="styles.css"><script src="app.js" defer></script>
+</head>
+<body>
+<main>
+<header class="header"><div><a class="brand" href="/" aria-label="Prime Assist home">Prime Assist</a><p class="tagline">A little clarity. A useful next step.</p></div><button id="reset" class="secondary" type="button" hidden>Start over</button></header>
+<section id="welcome" class="welcome"><h1>What do you need help with?</h1><p>Tell us what’s happening, in your own words. We’ll help you work out what to do next.</p><div class="examples" aria-label="Example questions"><button type="button" data-example="I received a message and I'm not sure it's genuine.">A suspicious message</button><button type="button" data-example="My phone isn't working right.">A technology problem</button><button type="button" data-example="I need help finding the right kind of local service.">Finding the right help</button></div></section>
+<details id="past" class="past" hidden><summary id="pastLabel">Earlier conversation</summary><div id="pastContent"></div></details>
+<section id="result" class="result" aria-labelledby="resultHeading" hidden><p class="your-message"><span>You asked</span><span id="lastQuestion"></span></p><div id="answer"></div></section>
+<form id="questionForm" class="question-card"><label id="questionLabel" for="question">What’s happening?</label><textarea id="question" rows="3" maxlength="4000" placeholder="Explain it the same way you would to a friend." required aria-describedby="privacy"></textarea>
+<details id="locationPanel"><summary>Add your location, if it matters</summary><label for="location">City and state, or ZIP code (optional)</label><input id="location" type="text" maxlength="160" autocomplete="off" placeholder="For example: Lovell, Wyoming"></details>
+<p id="privacy" class="privacy">Leave out passwords, account numbers, and payment details.</p>
+<div id="errorBox" class="error" role="alert" hidden><p id="errorText"></p><button id="retry" class="secondary" type="button">Try again</button></div>
+<div class="submit-row"><button id="send" class="primary" type="submit">Help me find the next step</button><p id="status" role="status" aria-live="polite"></p></div>
+</form>
+<footer>Prime Assist helps you navigate your next step. If someone is in immediate danger, contact emergency services.</footer>
+</main>
+</body></html>
