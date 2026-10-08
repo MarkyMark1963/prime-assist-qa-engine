@@ -213,7 +213,7 @@
         "user": "There's water on the floor.",
         "expected_mode": "clarify",
         "must": [
-          "ask one high-value source/location question"
+          "ask one focused, useful triage question about the water: its source, location, or whether it is still flowing or spreading; any one of these is sufficient"
         ],
         "must_not": [
           "assume flood",
