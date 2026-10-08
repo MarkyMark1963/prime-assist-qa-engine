@@ -65,3 +65,22 @@ test('malformed evaluator output is rejected and structural violations fail',()=
 test('call budget errors stop without a pass',async()=>{
  const f=fixture();f.store.spend=async()=>{throw Error('Call limit reached')};await runJob(f.store,f.j,f.c,{request:f.request});assert.equal(f.saves.at(-1).status,'technical_failed');
 });
+test('transient gateway failure retries within the call budget',async()=>{
+ const f=fixture();let failures=0;const waits=[];
+ const request=async(url,opts)=>failures++===0?{ok:false,status:502}:f.request(url,opts);
+ await runJob(f.store,f.j,f.c,{request,pause:async ms=>waits.push(ms)});
+ assert.equal(f.j.payload.summary.passed,true);assert.equal(f.calls,9);assert.deepEqual(waits,[1000]);
+});
+test('persistent gateway failure stops after three attempts',async()=>{
+ const f=fixture();await runJob(f.store,f.j,f.c,{request:async()=>({ok:false,status:503}),pause:async()=>{}});
+ assert.equal(f.calls,3);assert.equal(f.saves.at(-1).status,'technical_failed');assert.equal(f.j.payload.summary.passed,false);
+});
+test('interrupted conversation preserves completed turns and partial evaluations',async()=>{
+ const f=fixture();let gradingCalls=0;
+ const request=async(url,opts)=>url.includes('api.openai.com')&&++gradingCalls===4?{ok:false,status:429}:f.request(url,opts);
+ await runJob(f.store,f.j,f.c,{request});
+ assert.equal(f.j.payload.active.turns.length,1);assert.equal(f.j.payload.active.partial.baseline.pass,true);assert.equal(f.calls,8);
+ f.j.payload.results=f.j.payload.results.filter(x=>!x.technical);delete f.j.payload.error;
+ await runJob(f.store,f.j,f.c,{request:f.request});
+ assert.equal(f.calls,9);assert.equal(f.j.payload.summary.passed,true);assert.equal(f.j.payload.results[0].turns.length,2);
+});

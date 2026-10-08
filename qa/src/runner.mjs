@@ -1,13 +1,16 @@
 import {hash,gate,assertEvaluation,assertResponse} from './domain.mjs';
 const evaluationSchema={type:'object',properties:{pass:{type:'boolean'},severity:{type:'string',enum:['none','minor','major','critical']},reason:{type:'string'}},required:['pass','severity','reason'],additionalProperties:false};
-export async function runJob(store,j,c,{request=fetch,key=process.env.OPENAI_API_KEY,previewKey=process.env.QA_PREVIEW_KEY}={}){
+export async function runJob(store,j,c,{request=fetch,key=process.env.OPENAI_API_KEY,previewKey=process.env.QA_PREVIEW_KEY,pause=ms=>new Promise(resolve=>setTimeout(resolve,ms))}={}){
  const tests=c.suites[j.stage];
  j.payload.results ||= [];
  async function call(url,body,headers={}){
-  await store.spend(j);
-  const r=await request(url,{method:'POST',headers:{'content-type':'application/json',...headers},body:JSON.stringify(body),signal:AbortSignal.timeout(40000)});
-  if(!r.ok)throw Error('HTTP '+r.status);
-  return r.json();
+  for(let attempt=0;attempt<3;attempt++){
+   await store.spend(j);
+   const r=await request(url,{method:'POST',headers:{'content-type':'application/json',...headers},body:JSON.stringify(body),signal:AbortSignal.timeout(40000)});
+   if(r.ok)return r.json();
+   if(![502,503,504].includes(r.status)||attempt===2)throw Error('HTTP '+r.status);
+   await pause(1000*(attempt+1));
+  }
  }
  async function navigation(spec,history,patch){
   const d=await call(c.target+'/api/'+(patch?'navigate-preview':'navigate'),{question:spec.user,location:spec.location||'',history,expected_version:c.version,...(patch?{patch}:{})},patch?{'x-qa-key':previewKey}:{});
@@ -40,7 +43,7 @@ export async function runJob(store,j,c,{request=fetch,key=process.env.OPENAI_API
    }catch(e){technical=String(e.message);break}
   }
   if(technical){
-   j.payload.results.push({id:test.id,technical:true,error:technical});delete j.payload.active;
+   j.payload.results.push({id:test.id,technical:true,error:technical});
    j.payload.summary=gate(j.payload.results,tests.length);j.payload.error='Run stopped on technical failure: '+technical;
    await store.save(j,'technical_failed');return;
   }
