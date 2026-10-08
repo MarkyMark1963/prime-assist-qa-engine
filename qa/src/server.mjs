@@ -47,8 +47,10 @@ http.createServer(async(req,res)=>{
   }
   if(action==='evidence'&&req.method==='GET'){
    const stage=new URL(req.url,'http://localhost').searchParams.get('stage')||'development';
-   if(!['development','validation'].includes(stage))return reply(res,400,{error:'Only development or validation evidence can be viewed'});
-   const j=(await db.query('SELECT payload FROM paqa_jobs WHERE candidate_id=$1 AND stage=$2',[id,stage])).rows[0];return reply(res,200,{[stage]:j?.payload||null});
+   if(!stages.includes(stage))return reply(res,400,{error:'Unknown evidence stage'});
+   const j=(await db.query('SELECT status,payload FROM paqa_jobs WHERE candidate_id=$1 AND stage=$2',[id,stage])).rows[0];
+   if(stage==='holdout'&&j?.status!=='complete')return reply(res,400,{error:'Holdout evidence can be reviewed only after the final run completes'});
+   return reply(res,200,{[stage]:j?.payload||null});
   }
   if(action==='repair'&&req.method==='POST'){
    const rows=(await db.query("SELECT c.patch,j.status,j.payload FROM paqa_candidates c JOIN paqa_jobs j ON j.candidate_id=c.id WHERE c.id=$1 AND j.stage='development'",[id])).rows;
