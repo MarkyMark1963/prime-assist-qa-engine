@@ -50,7 +50,8 @@ http.createServer(async(req,res)=>{
    if(!stages.includes(stage))return reply(res,400,{error:'Unknown evidence stage'});
    const j=(await db.query('SELECT status,payload FROM paqa_jobs WHERE candidate_id=$1 AND stage=$2',[id,stage])).rows[0];
    if(stage==='holdout'&&j?.status!=='complete')return reply(res,400,{error:'Holdout evidence can be reviewed only after the final run completes'});
-   return reply(res,200,{[stage]:j?.payload||null});
+   const candidate=(await db.query('SELECT patch,patch_hash FROM paqa_candidates WHERE id=$1',[id])).rows[0];
+   return reply(res,200,{[stage]:j?{...j.payload,candidate_patch:candidate?.patch,patch_hash:candidate?.patch_hash}:null});
   }
   if(action==='repair'&&req.method==='POST'){
    const rows=(await db.query("SELECT c.patch,j.status,j.payload FROM paqa_candidates c JOIN paqa_jobs j ON j.candidate_id=c.id WHERE c.id=$1 AND j.stage='development'",[id])).rows;
@@ -65,3 +66,4 @@ http.createServer(async(req,res)=>{
 }).listen(process.env.PORT||3000,'0.0.0.0');
 let busy=false;
 setInterval(async()=>{if(busy)return;busy=true;try{await worker(store,db)}catch(e){console.error('Worker error:',e.message)}finally{busy=false}},1000);
+
